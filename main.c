@@ -1,4 +1,4 @@
-/* ATmega328P
+/* ATmega328P .. OK!
  *
  * Comandos para sincronizar localmente desde el respositorio
  * git stash (1 vez)
