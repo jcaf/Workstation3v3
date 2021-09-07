@@ -264,12 +264,13 @@ int main(void)
 
 	//Config to 1ms
 	TCNT0 = 0x00;
-	//TCCR0A = (1 << WGM01) | (0 << CS02) | (1 << CS01) | (1 << CS00); //CTC, PRES=64
-	TCCR0B = (1 << WGM01) | (0 << CS02) | (1 << CS01) | (1 << CS00); //CTC, PRES=64
+	TCCR0A = (1 << WGM01);
+	TCCR0B =  (0 << CS02) | (1 << CS01) | (1 << CS00); //CTC, PRES=64
 	OCR0A = CTC_SET_OCR_BYTIME(1e-3, 64);//1ms Exacto @PRES=64
 	//
 	TIMSK0 |= (1 << OCIE0A);
 	sei();
+	while (1);
 	//
 
 	main_flag.X1onoff = 1;
