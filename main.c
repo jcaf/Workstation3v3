@@ -1,4 +1,4 @@
-/* ATmega328P .. OK!
+/* ATmega328P .. OK! v3
  *
  * Comandos para sincronizar localmente desde el respositorio
  * git stash (1 vez)
@@ -76,7 +76,7 @@ struct _job job_buzzer;
 
 //---------------------------------------------------------------------------------------------
 //-------- Definicion del usuario de tiempos de manera general, excepto la secuencia para P1
-#define KEY_TIMEPRESSING 	20//ms Tiempo de pulsacion
+#define KEY_TIMEPRESSING 	80//20//ms Tiempo de pulsacion
 #define RELAY_TIMESWITCHING 40//ms Tiempo de conmutacion de Relays
 
 
@@ -106,14 +106,15 @@ void outputs_clear(void)
 /*
  * Tiempos en milisegundos
  */
-#define P1_T1 20
-#define P1_T2 80
-#define P1_T3 6000
-#define P1_T4 6020
-#define P1_T5 6120
+#define P1_T1 80	//20
+#define P1_T2 200	//80
+//#define P1_T3 //6000
+int16_t P1_T3 = 1000;//1000ms x defecto
+#define P1_T4 80	//6020 -> P1_T3+ P1_T4 -> 1080 o 2080
+#define P1_T5 100	//6120 -> P1_T3+ P1_T4 + P1_T5-> 1180 o 2180
 
-//#define P1JOB_TOTALTIME (P1_T1 + P1_T2 + P1_T3 + P1_T4 + P1_T5)
-#define P1JOB_TOTALTIME (P1_T5)
+////#define P1JOB_TOTALTIME (P1_T1 + P1_T2 + P1_T3 + P1_T4 + P1_T5)
+//#define P1JOB_TOTALTIME (P1_T5)
 
 int8_t keyP1_job(void)//secuencia
 {
@@ -163,7 +164,8 @@ int8_t keyP1_job(void)//secuencia
 	{
 		if (main_flag.f1ms)
 		{
-			if (++keyP1.counter >= P1_T4)//6020)
+			//if (++keyP1.counter >= P1_T4)//6020)
+			if (++keyP1.counter >= (P1_T3 + P1_T4))
 			{
 				PinTo0(PORTWxOUT_T, PINxOUT_T);
 				keyP1.sm0++;
@@ -174,7 +176,8 @@ int8_t keyP1_job(void)//secuencia
 	{
 		if (main_flag.f1ms)
 		{
-			if (++keyP1.counter >= P1_T5)//6120)
+			//if (++keyP1.counter >= P1_T5)//6120)
+			if (++keyP1.counter >= (P1_T3 + P1_T4 + P1_T5) )
 			{
 				PinTo0(PORTWxOUT_R, PINxOUT_R);
 				//
@@ -225,6 +228,9 @@ int main(void)
 {
 	int8_t kb_counter=0;
 
+	int8_t P1_2funct = 0;
+	int8_t C_2funct = 0;
+	
 	//Active pull-up
 	PinTo1(PORTWxKB_KEY0, PINxKB_KEY0);
 	PinTo1(PORTWxKB_KEY1, PINxKB_KEY1);
@@ -314,38 +320,65 @@ int main(void)
 							job_buzzer.f.job = 1;
 						}
 					}
+					
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_B))
 					{
-						if (keyB.f.enable)
-						{
-							if (keyB.f.lock == 0)
-							{
-								keyB.f.lock = 1;//B locked
-								keyC.f.lock = 0;//C unlock
-								//
-								keyB.f.job = 1;
-								//
-								job_buzzer.mode = BUZZERMODE_TACTSW;
-								job_buzzer.f.job = 1;
-							}
-						}
+						/*Ahora B es T1*/
+						P1_T3 = 1000;//2seg
+						//
+						PinTo0(PORTWxOUT_2, PINxOUT_2);
+						PinTo1(PORTWxOUT_1, PINxOUT_1);
 					}
+
+
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_C))
 					{
-						if (keyC.f.enable)
-						{
-							if (keyC.f.lock == 0)
-							{
-								keyC.f.lock = 1;//B locked
-								keyB.f.lock = 0;//C unlock
-								//
-								keyC.f.job = 1;
 
-								//
-								job_buzzer.mode = BUZZERMODE_TACTSW;
-								job_buzzer.f.job = 1;
+						if (!keyC.f.lock)
+						{
+							keyC.f.lock = 1; /* queda bloqueada*/
+
+							C_2funct = !C_2funct;
+
+							if (C_2funct != 0)
+							{
+								/* hace lo que hacia B*/
+								if (keyB.f.enable)
+								{
+									if (1)//(keyB.f.lock == 0)
+									{
+										// keyB.f.lock = 1;//B locked
+										// keyC.f.lock = 0;//C unlock
+										//
+										keyB.f.job = 1;
+										//
+										job_buzzer.mode = BUZZERMODE_TACTSW;
+										job_buzzer.f.job = 1;
+									}
+								}
+
+							}
+							else
+							{
+								/* hace lo que hacia C*/
+								if (keyC.f.enable)
+								{
+									if (1)// (keyC.f.lock == 0)
+									{
+										// keyC.f.lock = 1;//B locked
+										// keyB.f.lock = 0;//C unlock
+										//
+										keyC.f.job = 1;
+
+										//
+										job_buzzer.mode = BUZZERMODE_TACTSW;
+										job_buzzer.f.job = 1;
+									}
+								}
+
 							}
 						}
+						
 					}
 
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_X3))
@@ -370,52 +403,76 @@ int main(void)
 						}
 					}
 
+					
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_P1))
 					{
-						if (keyP1.f.enable)
+						if (!keyP1.f.lock)
 						{
-							if (!keyP1.f.lock)
+							keyP1.f.lock = 1; /*queda bloqueado*/
+
+							P1_2funct = !P1_2funct;
+
+
+							if (P1_2funct != 0)
 							{
-								keyP1.f.lock = 1;
-								keyP2.f.lock = 1;
-								keyA.f.enable = keyB.f.enable = keyC.f.enable = 0;//Disable A,B,C
-								keyX3.f.enable = 0;
-								//
-								keyP1.f.job = 1;
+								//secuencia de P1
+								if (keyP1.f.enable)
+								{
+									if (1)//(!keyP1.f.lock)
+									{
+										// keyP1.f.lock = 1;
+										// keyP2.f.lock = 1;
 
-								//
-								PinTo1(PORTWxLED2, PINxLED2);//add
+										keyA.f.enable = keyB.f.enable = keyC.f.enable = 0;//Disable A,B,C
+										keyX3.f.enable = 0;
+										//
+										keyP1.f.job = 1;
 
-								job_buzzer.mode = BUZZERMODE_X3_SEQUENCER;
-								job_buzzer.sm0 = 0;
-								job_buzzer.f.job = 1;
-								//
+										//
+										PinTo1(PORTWxLED2, PINxLED2);//add
+
+										job_buzzer.mode = BUZZERMODE_X3_SEQUENCER;
+										job_buzzer.sm0 = 0;
+										job_buzzer.f.job = 1;
+										//
+									}
+								}
+							}
+							else
+							{
+								//secuencia de P2
+								if (keyP2.f.enable)
+								{
+									if (1)//(!keyP2.f.lock)
+									{
+										// keyP1.f.lock = 1;
+										// keyP2.f.lock = 1;
+										//
+										keyA.f.enable = keyB.f.enable = keyC.f.enable = 0;//Disable A,B,C
+										keyX3.f.enable = 0;
+										//
+										keyP2.f.job = 1;
+										//
+										job_buzzer.mode = BUZZERMODE_TACTSW;
+										job_buzzer.f.job = 1;
+									}
+
+								}
 							}
 						}
-
 					}
+
 					//---------------------------
+					/* P2 es T2  -> fija K=2seg... OUT2 =1*/
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_P2))
 					{
-						if (keyP2.f.enable)
-						{
-							if (!keyP2.f.lock)
-							{
-								keyP1.f.lock = 1;
-								keyP2.f.lock = 1;
-								//
-								keyA.f.enable = keyB.f.enable = keyC.f.enable = 0;//Disable A,B,C
-								keyX3.f.enable = 0;
-								//
-								keyP2.f.job = 1;
-								//
-								job_buzzer.mode = BUZZERMODE_TACTSW;
-								job_buzzer.f.job = 1;
-							}
-
-						}
+						P1_T3 = 2000;//2seg
+						//
+						PinTo1(PORTWxOUT_2, PINxOUT_2);
+						PinTo0(PORTWxOUT_1, PINxOUT_1);
 
 					}
+
 				}
 			}
 		}
@@ -466,6 +523,9 @@ int main(void)
 							keyB.counter = 0;
 							keyB.sm0 = 0;
 							keyB.f.job = 0;
+
+							//added .. unlock
+							keyC.f.lock = 0;
 						}
 					}
 				}
@@ -490,6 +550,9 @@ int main(void)
 							keyC.counter = 0;
 							keyC.sm0 = 0;
 							keyC.f.job = 0;
+
+							//added .. unlock
+							keyC.f.lock = 0;
 						}
 					}
 				}
@@ -573,19 +636,12 @@ int main(void)
 				if (keyP1_job())
 				{
 					keyP1.f.job = 0;
-					//
-					//keyP1.f.lock = 0;//P1 queda bloqueada y P2 lo desbloquea y viceversa
-					keyP2.f.lock = 0;
 
+					keyP1.f.lock = 0;//unlock P1
+					//keyP2.f.lock = 0;
 					PinTo0(PORTWxBUZZER, PINxBUZZER);
-
 					PinTo0(PORTWxLED2, PINxLED2);//add
-
 					job_buzzer = job_reset;
-					//
-
-					//keyA.f.enable = keyB.f.enable = keyC.f.enable = 1;//Enable A,B,C
-					//keyX3.f.enable = 1;
 				}
 			}
 			if (keyP2.f.job)
@@ -595,7 +651,6 @@ int main(void)
 					keyP2.f.job = 0;
 					//
 					keyP1.f.lock = 0;//unlock P1
-					//keyP2.f.lock = 0;
 					//
 					keyA.f.enable = keyB.f.enable = keyC.f.enable = 1;//Enable A,B,C
 					keyX3.f.enable = 1;
