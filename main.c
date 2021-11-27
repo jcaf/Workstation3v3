@@ -108,8 +108,14 @@ void outputs_clear(void)
  */
 #define P1_T1 80	//20
 #define P1_T2 200	//80
-//#define P1_T3 //6000
-int16_t P1_T3 = 1000;//1000ms x defecto
+/* entre T1 y T2, el contador NO se resetea, si no, es acumulativo */
+
+							//#define P1_T3 //6000
+int16_t P1_T3;// = 1000;//1000ms x defecto
+
+/* T4 y T5 siguen avanzando tomando como base a P1_T3 */
+//contador en ese punto = P1_T3 + P1_T4
+//contador en ese punto  P1_T5 = P1_T3 + P1_T4+ P1+T5
 #define P1_T4 80	//6020 -> P1_T3+ P1_T4 -> 1080 o 2080
 #define P1_T5 100	//6120 -> P1_T3+ P1_T4 + P1_T5-> 1180 o 2180
 
@@ -276,7 +282,6 @@ int main(void)
 	//
 	TIMSK0 |= (1 << OCIE0A);
 	sei();
-	while (1);
 	//
 
 	main_flag.X1onoff = 1;
@@ -292,6 +297,9 @@ int main(void)
 
 	keyP2.f.lock = 1;
 
+	/* T1 por defecto*/
+	PinTo0(PORTWxOUT_2, PINxOUT_2);
+	PinTo1(PORTWxOUT_1, PINxOUT_1);
 	while (1)
 	{
 		if (isr_flag.f1ms)
@@ -333,14 +341,13 @@ int main(void)
 
 					if (ikb_key_is_ready2read(KB_LYOUT_KEY_C))
 					{
-
 						if (!keyC.f.lock)
 						{
 							keyC.f.lock = 1; /* queda bloqueada*/
 
 							C_2funct = !C_2funct;
 
-							if (C_2funct != 0)
+							if (C_2funct == 0)
 							{
 								/* hace lo que hacia B*/
 								if (keyB.f.enable)
@@ -564,6 +571,8 @@ int main(void)
 				{
 					PinTo1(PORTWxOUT_4, PINxOUT_4);
 
+					//fix update
+					PinTo1(PORTWxOUT_3, PINxOUT_3);
 					//
 					keyX3.counter = 0x00;
 					keyX3.sm0++;
@@ -575,7 +584,7 @@ int main(void)
 						if (++keyX3.counter >= RELAY_TIMESWITCHING)//	40)//40ms
 						{
 							keyX3.counter = 0x00;
-							PinTo1(PORTWxOUT_3, PINxOUT_3);
+							//PinTo1(PORTWxOUT_3, PINxOUT_3);
 							//
 							keyX3.sm0++;
 						}
